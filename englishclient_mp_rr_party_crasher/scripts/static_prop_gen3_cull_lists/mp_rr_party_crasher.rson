@@ -1,0 +1,10 @@
+models:
+[
+	mdl/foliage/olympus_moss_grass_02.rmdl
+	mdl/foliage/olympus_moss_grass_03.rmdl
+	mdl/foliage/grassblades_olympus_03_anim.rmdl
+	mdl/foliage/green_ground_leaves_02.rmdl
+	mdl/rocks/rockcluster_light_03.rmdl
+	mdl/rocks/rockcluster_light_01.rmdl
+	mdl/foliage/bush_green_forest_01_red_anim.rmdl
+]

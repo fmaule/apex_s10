@@ -1,0 +1,20 @@
+------------------------------------------------------
+--------------------Extraction Log--------------------
+--------------------10/2/2021 2:29:02 AM-------------
+------------------------------------------------------
+
+
+file:: mp_rr_arena_skygarden.rson {
+Extraction Status: Succesful
+};
+
+
+file:: cl_mp_rr_arena_skygarden.nut {
+Extraction Status: Succesful
+};
+
+
+file:: sh_mp_rr_arena_skygarden.nut {
+Extraction Status: Succesful
+};
+

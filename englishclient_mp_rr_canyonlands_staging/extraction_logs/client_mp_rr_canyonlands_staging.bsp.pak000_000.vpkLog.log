@@ -1,0 +1,45 @@
+------------------------------------------------------
+--------------------Extraction Log--------------------
+--------------------10/2/2021 2:30:37 AM-------------
+------------------------------------------------------
+
+
+file:: mp_rr_canyonlands_staging.rson {
+Extraction Status: Succesful
+};
+
+
+file:: mp_rr_canyonlands_staging.rson {
+Extraction Status: Succesful
+};
+
+
+file:: mp_rr_canyonlands_common.nut {
+Extraction Status: Succesful
+};
+
+
+file:: mp_rr_canyonlands_mu1_common.nut {
+Extraction Status: Succesful
+};
+
+
+file:: cl_mp_rr_canyonlands_staging.nut {
+Extraction Status: Succesful
+};
+
+
+file:: npc_weapon_energy_shotgun.txt {
+Extraction Status: Succesful
+};
+
+
+file:: npc_weapon_lstar.txt {
+Extraction Status: Succesful
+};
+
+
+file:: npc_weapon_hemlok.txt {
+Extraction Status: Succesful
+};
+

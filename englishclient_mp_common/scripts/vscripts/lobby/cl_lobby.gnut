@@ -1,0 +1,156 @@
+
+global function Lobby_AddLocalPlayer
+global function AddCallback_OnPlayerAddedToLobby
+
+              
+
+global function S10E04_CreateCrow
+global function S10E04_TriggerCrowLeave
+global function S10E04_ToggleHighlightOnRaven
+
+const asset S10E04_CROW_MDL = $"mdl/creatures/bird/bird.rmdl"
+const vector S10E04_CROW_01_ORIGIN =  <-36.0, 560, 0>
+const vector S10E04_CROW_01_ANGLES = <0, -30, 0>
+const string S10E04_CROW_01_SCRIPTNAME = "s10e04_raven_01"
+const string S10E04_CROW_IDLE_ANIM = "Bird_casual_idle_s10e04"
+const string S10E04_CROW_LEAVE_ANIM = "Bird_react_fly_small_s10e04"
+const asset S10E04_CROW_DISSOLVE = $"P_aether_raven_death"
+
+      
+struct
+{
+	array<void functionref( entity )> onPlayerAddedToLobbyCallbacks
+} file
+
+void function Lobby_AddLocalPlayer()
+{
+	entity player = GetLocalClientPlayer()
+	Assert( IsValid( player ) )
+
+	player.FreezeControlsOnClient()
+	player.HideCrosshairNames()
+
+	SetStandardAbilityBindingsForPilot( player )
+	RefreshPresentationType()
+
+                 
+	                                                                                        
+	                                                                    
+	                                                      
+	RunUIScript( "Lobby_EnableMinimapCoordsOnConnect", player.GetPlayerName() )
+      
+
+	foreach ( func in file.onPlayerAddedToLobbyCallbacks )
+		func( player )
+
+              
+	if ( IsValid( player ) )
+	{
+		ItemFlavor ornull storyEvent = GetStoryChallengeEventIfActive( GetUnixTimestamp(), "calevent_s10e04_story_challenges" )
+		if ( storyEvent != null )
+		{
+			StoryEventDialogueData dialogueData = StoryChallengeEvent_GetNonAutoplayDialogueDataForPlayer( expect ItemFlavor(storyEvent), player )
+			if ( dialogueData.audioAliases.len() != 0 )
+			{
+				PrecacheParticleSystem( S10E04_CROW_DISSOLVE )
+				S10E04_CreateCrow()
+			}
+		}
+	}
+      
+}
+
+void function AddCallback_OnPlayerAddedToLobby( void functionref( entity ) onPlayerAddedToLobbyCallback )
+{
+	Assert( ! ( file.onPlayerAddedToLobbyCallbacks.contains( onPlayerAddedToLobbyCallback ) ), "Attempted to add same callback to onPlayerAddedToLobbyCallbacks twice." )
+
+	file.onPlayerAddedToLobbyCallbacks.append( onPlayerAddedToLobbyCallback )
+}
+
+              
+void function S10E04_CreateCrow()
+{
+	array < entity > ravenArray = GetEntArrayByScriptName( S10E04_CROW_01_SCRIPTNAME )
+	if ( ravenArray.len() != 0 )
+	{
+		return
+	}
+
+	entity crow = CreateClientSidePropDynamic( S10E04_CROW_01_ORIGIN, S10E04_CROW_01_ANGLES, S10E04_CROW_MDL )
+	crow.SetScriptName( S10E04_CROW_01_SCRIPTNAME )
+	crow.SetSkin(2)
+	thread PlayAnim( crow, S10E04_CROW_IDLE_ANIM )
+	RunUIScript( "ToggleRavenStatus", true )
+}
+
+void function S10E04_TriggerCrowLeave()
+{
+	array < entity > ravenArray = GetEntArrayByScriptName( S10E04_CROW_01_SCRIPTNAME )
+	if ( ravenArray.len() != 1 )
+	{
+		return
+	}
+
+	RunUIScript( "ToggleRavenStatus", false )
+
+	entity bird = ravenArray[0]
+
+	thread function() : ( bird )
+	{
+		bird.EndSignal( "OnDestroy" )
+		OnThreadEnd(
+			function() : ( bird )
+			{
+				if ( IsValid( bird ) )
+					bird.Destroy()
+			}
+		)
+
+		thread PlayAnim( bird, S10E04_CROW_LEAVE_ANIM )
+		wait 0.5
+
+		int fxId = GetParticleSystemIndex( S10E04_CROW_DISSOLVE )
+		int fxHandle = StartParticleEffectOnEntity( bird, fxId, FX_PATTACH_ABSORIGIN_FOLLOW, 0 )
+		waitthread fadeModelAlphaOutOverTime( bird, 0.4 )
+
+		wait 1
+
+	}()
+}
+
+void function fadeModelAlphaOutOverTime( entity model, float duration )
+{
+	EndSignal( model, "OnDestroy" )
+
+	float startTime = Time()
+	float endTime = startTime + duration
+	int startAlpha = 255
+	int endAlpha = 0
+
+	model.kv.rendermode = 4                      
+
+	while ( Time() <= endTime )
+	{
+		float alphaResult = GraphCapped( Time(), startTime, endTime, startAlpha, endAlpha )
+		model.kv.renderamt = alphaResult
+		WaitFrame()
+	}
+}
+
+void function S10E04_ToggleHighlightOnRaven(bool focus)
+{
+	array<entity> ravens = GetEntArrayByScriptName(S10E04_CROW_01_SCRIPTNAME)
+	if ( ravens.len() != 1 || !IsValid( ravens[0] ))
+		return
+
+	if ( focus )
+	{
+		S10E04_SonarViewModelHighlight( ravens[0], <1, 0, 0> )
+	}
+	else
+	{
+		SonarViewModelClearHighlight ( ravens[0] )
+	}
+}
+
+      

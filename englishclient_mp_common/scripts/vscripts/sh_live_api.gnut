@@ -1,0 +1,103 @@
+global function LiveAPI_RegisterNetworking
+global function LiveAPI_GetEventNameFromEnum
+global function LiveAPI_GetPlayerIdentity
+global function LiveAPI_GetPlayerIdentityTable
+
+global enum eLiveAPI_EventTypes
+{
+    playerDamaged = 0,
+    squadEliminated = 1,
+    blackMarketAction = 2,
+    playerConnected = 3,
+    bleedoutBegin = 4,
+    bleedoutEnd = 5,
+    inventoryAction = 6,
+    playerRevive = 7,
+    bannerCollected = 8,
+    ziplineUsed = 9,
+    warpGateUsed = 10,
+    playerAbilityUsed = 11,
+    observerSwitched = 12,
+    grenadeThrown = 13,
+	inventoryPickUp = 14,
+	inventoryDrop = 15,
+	inventoryUse = 16,
+	playerRespawnTeam = 17,
+	wraithPortal = 18,
+	playerKilled = 19,
+	gibraltarShieldAbsorbed = 23,
+
+    MAX = 24
+}
+
+       
+var function LiveAPI_GetPlayerIdentityTable( entity player )
+{
+	if ( player == null || player.IsWorld() )
+		return { name = "World" }
+
+	if ( player.IsPlayer() )
+	{
+		EHI ehi = ToEHI( player )
+
+		var data = {
+			name = player.GetPlayerName(),
+			                                                  
+			teamId = player.GetTeam(),
+			teamName = GameRules_GetTeamName( player.GetTeam() )#if CLIENT,
+				                                                     
+			squadIndex = EEH_GetTeamMemberIndex( ehi )
+			#endif
+		}
+
+		return data
+	}
+
+	return { name = expect string( player.GetNetworkedClassName() ) }
+}
+
+string function LiveAPI_GetPlayerIdentity( entity player )
+{
+	if ( player == null || player.IsWorld() )
+		return "World"
+
+	if ( player.IsPlayer() )
+	{
+		return player.GetPlayerName()
+	}
+
+	return expect string( player.GetNetworkedClassName() )
+}
+
+string function LiveAPI_GetEventNameFromEnum( int enumVal )
+{
+    return GetEnumString( "eLiveAPI_EventTypes", enumVal )
+}
+
+void function LiveAPI_RegisterNetworking()
+{
+	                                                                                                      
+	Remote_RegisterClientFunction( "ServerCallback_LiveAPI_LogNetwork_PlayerConnect",   "entity" )
+
+	Remote_RegisterClientFunction( "ServerCallback_LiveAPI_LogNetwork_OnePlayer",       "int", INT_MIN, eLiveAPI_EventTypes.MAX, "entity" )
+    Remote_RegisterClientFunction( "ServerCallback_LiveAPI_LogNetwork_OnePlayerAndEnt", "int", INT_MIN, eLiveAPI_EventTypes.MAX, "entity", "entity" )
+    Remote_RegisterClientFunction( "ServerCallback_LiveAPI_LogNetwork_TwoPlayer",       "int", INT_MIN, eLiveAPI_EventTypes.MAX, "entity", "entity" )
+
+    Remote_RegisterClientFunction( "ServerCallback_LiveAPI_LogNetwork_CombatInstance",  "int", INT_MIN, eLiveAPI_EventTypes.MAX, "entity", "entity", "int", INT_MIN, INT_MAX, "int", INT_MIN, INT_MAX )
+    Remote_RegisterClientFunction( "ServerCallback_LiveAPI_LogNetwork_OnePlayerItem",   "int", INT_MIN, eLiveAPI_EventTypes.MAX, "entity", "string" )
+	Remote_RegisterClientFunction( "ServerCallback_LiveAPI_LogNetwork_Int",             "int", INT_MIN, eLiveAPI_EventTypes.MAX, "int", INT_MIN, INT_MAX )
+
+	Remote_RegisterClientFunction( "ServerCallback_LiveAPI_LogNetwork_RespawnTeam",     "entity", "string" )
+
+                                                                                  
+	Remote_RegisterClientFunction( "ServerCallback_LiveAPI_LogNetwork_InventoryAction", "int", INT_MIN, eLiveAPI_EventTypes.MAX, "entity", "string", "int", INT_MIN, INT_MAX                )
+	Remote_RegisterClientFunction( "ServerCallback_LiveAPI_LogNetwork_InventoryActionWithMods", "int", INT_MIN, eLiveAPI_EventTypes.MAX, "entity", "string", "int", INT_MIN, INT_MAX               , "string"                  )
+
+                                   
+    Remote_RegisterServerFunction( "ClientCallback_LiveAPI_JoinObservers" )
+	Remote_RegisterServerFunction( "ClientCallback_LiveAPI_LeaveObservers" )
+
+#if SERVER
+                        
+#endif
+}

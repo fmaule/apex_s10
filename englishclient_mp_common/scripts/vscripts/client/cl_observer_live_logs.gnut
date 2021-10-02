@@ -1,0 +1,348 @@
+global function ObserverLiveLogs_Init
+
+//
+global function ServerCallback_ObserverLiveLogs_LogNetwork_PlayerConnect
+global function ServerCallback_ObserverLiveLogs_LogNetwork_OnePlayer
+global function ServerCallback_ObserverLiveLogs_LogNetwork_OnePlayerAndEnt
+global function ServerCallback_ObserverLiveLogs_LogNetwork_TwoPlayer
+global function ServerCallback_ObserverLiveLogs_LogNetwork_CombatInstance
+global function ServerCallback_ObserverLiveLogs_LogNetwork_OnePlayerItem
+global function ServerCallback_ObserverLiveLogs_LogNetwork_Int
+global function ServerCallback_ObserverLiveLogs_LogNetwork_InventoryAction
+global function ServerCallback_ObserverLiveLogs_LogNetwork_InventoryActionWithMods
+global function ServerCallback_ObserverLiveLogs_LogNetwork_RespawnTeam
+
+//
+global function ObserverLiveLogs_GetWeaponNameFromDamageSourceID
+
+//
+global function ObserverLiveLogs_OnPlayerDowned
+global function ObserverLiveLogs_OnLocalPlayerSpawned
+
+//
+string function ObserverLiveLogs_GetWeaponNameFromDamageSourceID( int damageSourceID )
+{
+	return Localize( GetObitFromDamageSourceID( damageSourceID ) )
+}
+
+string function ObserverLiveLogs_GetItemNameFromRef( string ref )
+{
+    if ( SURVIVAL_Loot_IsRefValid( ref ) )
+	{
+		LootData lootData = SURVIVAL_Loot_GetLootDataByRef( ref )
+		bool hasQuality = lootData.tier > MIN_LOOT_TIER + 1
+		string itemName = Localize( lootData.pickupString )
+
+		if ( hasQuality )
+			itemName += " (Level " + string( lootData.tier ) + ")"
+			
+		return itemName
+	}
+	
+	return "Unrecognised item " + ref
+}
+
+//
+
+//
+void function ServerCallback_ObserverLiveLogs_LogNetwork_PlayerConnect( string playerName )
+{
+	ObserverLiveLogs_WriteLog( ObserverLiveLogs_GetEventNameFromEnum( eObserverLiveLogs_EventTypes.playerConnected ), {
+		player = playerName
+	} )
+}
+
+void function ServerCallback_ObserverLiveLogs_LogNetwork_OnePlayer( int eventIndex, entity playerOne )
+{
+	if ( !IsValid( playerOne ) )
+		return
+
+    ObserverLiveLogs_WriteLog( ObserverLiveLogs_GetEventNameFromEnum( eventIndex ), {
+        playerOne = ObserverLiveLogs_GetPlayerIdentity( playerOne )
+    } )
+}
+
+void function ServerCallback_ObserverLiveLogs_LogNetwork_OnePlayerAndEnt( int eventIndex, entity playerOne, entity linkedEntity )
+{
+	if ( !IsValid( playerOne ) || !IsValid( linkedEntity ) )
+		return
+
+    string name = linkedEntity.IsWeaponX() ? linkedEntity.GetWeaponSettingString( eWeaponVar.shortprintname ) : ObserverLiveLogs_GetPlayerIdentity( linkedEntity )
+
+    entity tacticalAbility = playerOne.GetOffhandWeapon( OFFHAND_LEFT )
+    if ( linkedEntity == tacticalAbility )
+        name = "Tactical (" + name + ")"
+
+	entity ultimateAbility = playerOne.GetOffhandWeapon( OFFHAND_INVENTORY )
+    if ( linkedEntity == ultimateAbility )
+        name = "Ultimate (" + name + ")"
+
+    ObserverLiveLogs_WriteLog( ObserverLiveLogs_GetEventNameFromEnum( eventIndex ), {
+        playerOne = ObserverLiveLogs_GetPlayerIdentity( playerOne ),
+        linkedEntity = name
+    } )
+}
+
+void function ServerCallback_ObserverLiveLogs_LogNetwork_TwoPlayer( int eventIndex, entity playerOne, entity playerTwo )
+{
+	if ( !IsValid( playerOne ) || !IsValid( playerTwo ) )
+		return
+
+    ObserverLiveLogs_WriteLog( ObserverLiveLogs_GetEventNameFromEnum( eventIndex ), {
+        playerOne = ObserverLiveLogs_GetPlayerIdentity( playerOne ),
+        playerTwo = ObserverLiveLogs_GetPlayerIdentity( playerTwo )
+    } )
+}
+
+void function ServerCallback_ObserverLiveLogs_LogNetwork_CombatInstance( int eventIndex, entity attacker, entity victim, int damageSourceId, int damageInflicted )
+{
+	if ( !IsValid( attacker ) || !IsValid( victim ) )
+		return
+
+    table<string, var> data = {
+        attacker = ObserverLiveLogs_GetPlayerIdentity( attacker ),
+        victim = ObserverLiveLogs_GetPlayerIdentity( victim ),
+		weapon = ObserverLiveLogs_GetWeaponNameFromDamageSourceID( damageSourceId )
+    }
+
+	//
+	if ( eventIndex != eObserverLiveLogs_EventTypes.playerKilled )
+		data.damageInflicted <- damageInflicted
+
+    ObserverLiveLogs_WriteLog( ObserverLiveLogs_GetEventNameFromEnum( eventIndex ), data )
+}
+
+void function ServerCallback_ObserverLiveLogs_LogNetwork_OnePlayerItem( int eventIndex, entity player, string itemRef )
+{
+	if ( !IsValid( player ) )
+		return
+
+    ObserverLiveLogs_WriteLog( ObserverLiveLogs_GetEventNameFromEnum( eventIndex ), {
+        player = ObserverLiveLogs_GetPlayerIdentity( player ),
+		item = ObserverLiveLogs_GetItemNameFromRef( itemRef )
+    } )
+}
+
+void function ServerCallback_ObserverLiveLogs_LogNetwork_Int( int eventIndex, int argInt )
+{
+    ObserverLiveLogs_WriteLog( ObserverLiveLogs_GetEventNameFromEnum( eventIndex ), {
+        index = argInt
+    } )
+}
+
+//
+void function ServerCallback_ObserverLiveLogs_LogNetwork_InventoryActionWithMods( int eventIndex, entity player, string itemRef, int quantity, string extraData )
+{
+	if ( !IsValid( player ) )
+		return
+
+    string modList = ""
+
+    if ( extraData.len() > 0 )
+    {
+        //
+        array<string> extraDataAsArray = split( extraData, " " )
+
+        int curIndex = 0
+        foreach ( mod in extraDataAsArray )
+        {
+            curIndex++
+
+            if ( SURVIVAL_Loot_IsRefValid( mod ) )
+			{
+				LootData lootData = SURVIVAL_Loot_GetLootDataByRef( mod )
+				bool hasQuality = lootData.tier > MIN_LOOT_TIER
+				string qualityName = "Level " + string( lootData.tier )
+
+				modList = modList + Localize( lootData.pickupString ) 
+            
+				if ( hasQuality )
+					modList = modList + " (" + qualityName + ")"
+					
+				if ( extraDataAsArray.len() != curIndex )
+					modList = modList + ", "
+			}
+        }
+    }
+
+	table<string, var> data = {
+		player = ObserverLiveLogs_GetPlayerIdentity( player ),
+		item = ObserverLiveLogs_GetItemNameFromRef( itemRef ),
+		extraData = modList
+	}
+
+	data.quantity <- quantity
+
+    ObserverLiveLogs_WriteLog( ObserverLiveLogs_GetEventNameFromEnum( eventIndex ), data )
+}
+
+void function ServerCallback_ObserverLiveLogs_LogNetwork_InventoryAction( int eventIndex, entity player, string itemRef, int quantity )
+{
+	if ( !IsValid( player ) )
+		return
+
+	table<string, var> data = {
+		player = ObserverLiveLogs_GetPlayerIdentity( player ),
+		item = ObserverLiveLogs_GetItemNameFromRef( itemRef )
+	}
+
+	data.quantity <- quantity
+
+	ObserverLiveLogs_WriteLog( ObserverLiveLogs_GetEventNameFromEnum( eventIndex ), data )
+}
+
+void function ServerCallback_ObserverLiveLogs_LogNetwork_RespawnTeam( entity player, string playerList )
+{
+	if ( !IsValid( player ) )
+		return
+
+	ObserverLiveLogs_WriteLog( "playerRespawnTeam", {
+		player = ObserverLiveLogs_GetPlayerIdentity( player ),
+		team = playerList
+	} )
+}
+
+//
+
+//
+void function ObserverLiveLogs_OnPlayerDisconnected( entity player )
+{
+	if ( !IsValid( player ) )
+		return
+
+	ObserverLiveLogs_WriteLog( "playerDisconnected", {
+        player = ObserverLiveLogs_GetPlayerIdentity( player )
+    } )
+}
+//
+
+//
+void function ObserverLiveLogs_OnPlayerDowned( entity attacker, entity victim, int damageSourceId )
+{
+	if ( !IsValid( attacker ) || !IsValid( victim ) )
+		return
+
+	ObserverLiveLogs_WriteLog( "playerDowned", {
+		attacker = ObserverLiveLogs_GetPlayerIdentity( attacker ),
+		victim = ObserverLiveLogs_GetPlayerIdentity( victim ),
+		weapon = ObserverLiveLogs_GetWeaponNameFromDamageSourceID( damageSourceId )
+	} )
+}
+//
+
+//
+void function ObserverLiveLogs_OnDeathFieldStartShrink( DeathFieldStageData deathFieldData )
+{
+    ObserverLiveLogs_WriteLog( "ringStartClosing", {
+        stage = SURVIVAL_GetCurrentDeathFieldStage() 
+    } )
+}
+
+void function ObserverLiveLogs_OnDeathFieldStopShrink( DeathFieldStageData deathFieldData )
+{
+    ObserverLiveLogs_WriteLog( "ringFinishedClosing", {
+        stage = SURVIVAL_GetCurrentDeathFieldStage()
+    } )
+}
+//
+
+bool firstStateChange = true
+void function ObserverLiveLogs_OnGameStateChanged( entity player, int oldVal, int newVal, bool actuallyChanged )
+{
+	if ( !IsPrivateMatch() )
+		return
+
+	if ( !actuallyChanged )
+		return
+
+	if ( firstStateChange )
+	{
+		//
+		//
+		string version = ObserverLiveLogs_GetGameVersion()
+
+		ObserverLiveLogs_WriteLog( "init", {
+			gameVersion = version
+		}, true )
+
+		firstStateChange = false
+	}
+
+	//
+	if ( newVal == eGameState.WinnerDetermined )
+	{
+		int winnerTeam = GetNetWinningTeam()
+
+		string winnerNames
+		array<entity> playerList = GetPlayerArray()
+
+		foreach ( listedPlayer in playerList )
+		{
+			if ( listedPlayer.GetTeam() != winnerTeam )
+				continue
+
+			winnerNames += ObserverLiveLogs_GetPlayerIdentity( listedPlayer ) + ", "
+		}
+
+		//
+		winnerNames = winnerNames.slice( 0, winnerNames.len() - 2 )
+
+		ObserverLiveLogs_WriteLog( "matchStateEnd", {
+			state = GetEnumString( "eGameState", GetGameState() ),
+			winners = winnerNames
+		} )
+
+		return
+	}
+
+    ObserverLiveLogs_WriteLog( "gameStateChanged", {
+        state = GetEnumString( "eGameState", GetGameState() )
+    } )
+}
+
+void function ObserverLiveLogs_OnLocalPlayerSpawned( entity localPlayer )
+{
+    //
+    ObserverLiveLogs_ResetState()
+
+    //
+    Remote_ServerCallFunction( "ClientCallback_ObserverLiveLogs_JoinObservers" )
+
+    printf( "[Observer Live Logs] Trying to join observers: " + string( localPlayer ) )
+}
+
+void function ObserverLiveLogs_Init()
+{
+    //
+    AddCallback_OnPlayerDisconnected( ObserverLiveLogs_OnPlayerDisconnected )
+
+    //
+    SURVIVAL_AddCallback_OnDeathFieldStartShrink( ObserverLiveLogs_OnDeathFieldStartShrink )
+    SURVIVAL_AddCallback_OnDeathFieldStopShrink( ObserverLiveLogs_OnDeathFieldStopShrink )
+
+    printf( "[Observer Live Logs] Initialized" )
+    
+    //
+	AddCallback_OnClientScriptInit( ObserverLiveLogs_OnLocalPlayerSpawned )
+
+    if ( !IsLobby() )
+		RegisterNetVarIntChangeCallback( "gameState", ObserverLiveLogs_OnGameStateChanged )
+}
+
+//
+void function ObserverLiveLogs_WriteLog( string category, table<string, var> data, bool force = false )
+{
+	if ( !force )
+	{
+		if ( !ObserverLiveLogs_IsSystemEnabled() )
+			return
+
+		if ( !IsConnected() )
+			return
+	}
+
+	data.timestamp <- GetUnixTimestamp()
+	data.category <- category
+
+	ObserverLiveLogs_LogRaw( data )
+}
